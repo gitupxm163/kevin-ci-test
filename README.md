@@ -24,12 +24,7 @@ on PR to main:
 
 ## local testing
 
-run complete test:
-```bash
-./test-complete-flow.sh
-```
-
-or step by step:
+run local test:
 ```bash
 ./test-local.sh
 ```
