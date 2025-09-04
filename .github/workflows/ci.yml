@@ -1,0 +1,73 @@
+name: K8s Load Test
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install KinD
+      run: |
+        curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.30.0/kind-linux-amd64
+        chmod +x ./kind
+        sudo mv ./kind /usr/local/bin/
+
+    - name: Install kubectl
+      run: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x kubectl
+        sudo mv kubectl /usr/local/bin/
+
+    - name: setup cluster
+      run: |
+        kind create cluster --config=kind-cluster-config.yaml --name=ci-test
+        kubectl cluster-info --context kind-ci-test
+
+    - name: ingress controller
+      run: |
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+        kubectl wait --namespace ingress-nginx \
+          --for=condition=ready pod \
+          --selector=app.kubernetes.io/component=controller \
+          --timeout=90s
+
+    - name: deploy apps
+      run: |
+        chmod +x ./scripts/deploy-apps.sh
+        ./scripts/deploy-apps.sh
+
+    - name: health check
+      run: |
+        chmod +x ./scripts/verify-health.sh
+        ./scripts/verify-health.sh
+
+    - name: load test  
+      run: |
+        chmod +x ./scripts/load-test.sh
+        ./scripts/load-test.sh > results.txt
+
+    - name: Comment PR with results  
+      if: github.event_name == 'pull_request'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "## Load Testing Results" > comment.md
+        echo "" >> comment.md
+        echo '```' >> comment.md
+        cat results.txt >> comment.md
+        echo '```' >> comment.md
+        echo "" >> comment.md
+        echo "generated $(date)" >> comment.md
+        
+        gh pr comment ${{ github.event.number }} --body-file comment.md
