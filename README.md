@@ -73,8 +73,7 @@ common issues i encountered:
 ## time spent
 
 about 4 hours total:
-- ci setup: 1.5h
-- k8s configs: 1h
+- design and local test 2.5
 - scripts: 1h  
 - docs: 0.5h
 
