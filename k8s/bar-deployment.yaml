@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bar-echo
+  labels:
+    app: bar-echo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bar-echo
+  template:
+    metadata:
+      labels:
+        app: bar-echo
+    spec:
+      containers:
+      - name: echo-server
+        image: hashicorp/http-echo:latest
+        args:
+          - -text=bar
+        ports:
+        - containerPort: 5678
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5678
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5678
+          initialDelaySeconds: 15
+          periodSeconds: 20
